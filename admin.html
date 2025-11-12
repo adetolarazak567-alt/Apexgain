@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApexGain Admin Panel</title>
+<style>
+body{ font-family:'Segoe UI',sans-serif; background:#ecf0f1; margin:0; padding:0;}
+header{ background:#2c3e50; color:#fff; padding:20px; text-align:center; font-size:24px; }
+.container{ max-width:1000px; margin:20px auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1);}
+h2{ margin-top:20px; color:#2c3e50; }
+table{ width:100%; border-collapse: collapse; margin-top:10px;}
+th, td{ padding:12px; border-bottom:1px solid #ddd; text-align:left;}
+th{ background:#16a085; color:#fff; }
+button{ background:#16a085; border:none; padding:8px 15px; border-radius:8px; color:#fff; cursor:pointer; transition:0.3s; }
+button:hover{ background:#1abc9c; }
+.status-pending{ color:#e67e22; font-weight:bold;}
+.status-approved{ color:#27ae60; font-weight:bold;}
+</style>
+</head>
+<body>
+<header>ApexGain Admin Panel</header>
+<div class="container">
+<h2>Users</h2>
+<table id="usersTable">
+<tr><th>Name</th><th>Email</th><th>Balance</th><th>GB Processed</th></tr>
+</table>
+
+<h2>Tasks</h2>
+<table id="tasksTable">
+<tr><th>ID</th><th>Title</th><th>GB Size</th><th>Assigned To</th><th>Status</th></tr>
+</table>
+
+<h2>Withdrawals</h2>
+<table id="withdrawalsTable">
+<tr><th>ID</th><th>User Email</th><th>Amount</th><th>Method</th><th>Status</th><th>Action</th></tr>
+</table>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+ws.onmessage = (e)=>{
+    const msg = JSON.parse(e.data);
+    if(msg.type === 'task_completed' || msg.type === 'withdrawal_requested'){
+        loadAll();
+    }
+};
+
+async function loadAll(){
+    // Load Users
+    const resUsers = await fetch('/api/admin/users?token='+token);
+    const users = await resUsers.json();
+    const uTable = document.getElementById('usersTable');
+    uTable.innerHTML = '<tr><th>Name</th><th>Email</th><th>Balance</th><th>GB Processed</th></tr>';
+    users.forEach(u=>{
+        uTable.innerHTML += `<tr>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>$${u.balance.toFixed(2)}</td>
+        <td>${u.gb_processed.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    // Load Tasks
+    const resTasks = await fetch('/api/admin/tasks?token='+token);
+    const tasks = await resTasks.json();
+    const tTable = document.getElementById('tasksTable');
+    tTable.innerHTML = '<tr><th>ID</th><th>Title</th><th>GB Size</th><th>Assigned To</th><th>Status</th></tr>';
+    tasks.forEach(t=>{
+        tTable.innerHTML += `<tr>
+        <td>${t.id}</td>
+        <td>${t.title}</td>
+        <td>${t.gb_size}</td>
+        <td>${t.assigned_to||'-'}</td>
+        <td>${t.status}</td>
+        </tr>`;
+    });
+
+    // Load Withdrawals
+    const resW = await fetch('/api/admin/withdrawals?token='+token);
+    const wds = await resW.json();
+    const wTable = document.getElementById('withdrawalsTable');
+    wTable.innerHTML = '<tr><th>ID</th><th>User Email</th><th>Amount</th><th>Method</th><th>Status</th><th>Action</th></tr>';
+    wds.forEach(w=>{
+        const btn = w.status === 'pending' ? `<button onclick="approve(${w.id})">Approve</button>` : '-';
+        wTable.innerHTML += `<tr>
+        <td>${w.id}</td>
+        <td>${w.user_email}</td>
+        <td>$${w.amount.toFixed(2)}</td>
+        <td>${w.method}</td>
+        <td class="status-${w.status}">${w.status}</td>
+        <td>${btn}</td>
+        </tr>`;
+    });
+}
+
+async function approve(id){
+    const res = await fetch('/api/admin/withdrawals/approve?token='+token, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({withdrawal_id:id})
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadAll();
+}
+
+loadAll();
+</script>
+</body>
+</html>
