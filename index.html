@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApexGain | Login</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg,#1abc9c,#16a085); display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+.container { background:#fff; padding:40px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.2); width:350px; }
+h1 { text-align:center; margin-bottom:20px; }
+input { width:100%; padding:12px; margin:8px 0; border-radius:8px; border:1px solid #ccc; }
+button { width:100%; padding:12px; border:none; border-radius:8px; background:#16a085; color:#fff; font-weight:bold; cursor:pointer; transition:0.3s; }
+button:hover { background:#1abc9c; }
+p { text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>ApexGain</h1>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p>Or <span style="color:#16a085; cursor:pointer;" onclick="signup()">Signup</span></p>
+</div>
+
+<script>
+async function login(){
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const res = await fetch('/api/user/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email,password})
+    });
+    const data = await res.json();
+    if(data.token){
+        localStorage.setItem('token', data.token);
+        window.location.href = 'dashboard.html';
+    }else{
+        alert(data.detail || 'Login failed');
+    }
+}
+
+async function signup(){
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const name = prompt('Enter your name:');
+    const res = await fetch('/api/user/signup', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email,password,name})
+    });
+    const data = await res.json();
+    if(data.token){
+        localStorage.setItem('token', data.token);
+        window.location.href = 'dashboard.html';
+    }else{
+        alert(data.detail || 'Signup failed');
+    }
+}
+</script>
+</body>
+</html>
