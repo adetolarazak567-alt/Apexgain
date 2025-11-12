@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApexGain Dashboard</title>
+<style>
+body{ font-family:'Segoe UI',sans-serif; background:#ecf0f1; margin:0; padding:0;}
+header{ background:#16a085; color:#fff; padding:20px; text-align:center; font-size:24px; }
+.container{ max-width:900px; margin:20px auto; background:#fff; padding:30px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1);}
+button{ background:#16a085; border:none; padding:12px 20px; border-radius:10px; color:#fff; cursor:pointer; transition:0.3s; }
+button:hover{ background:#1abc9c; }
+.task-card{ background:#f1f2f6; padding:15px; margin:10px 0; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+</style>
+</head>
+<body>
+<header>ApexGain Dashboard</header>
+<div class="container">
+<h2>Balance: $<span id="balance">0</span></h2>
+<h2>GB Processed: <span id="gb">0</span> GB</h2>
+
+<h3>Available Task:</h3>
+<div id="task"></div>
+<button onclick="getTask()">Get Task</button>
+
+<h3>Withdraw:</h3>
+<input type="number" id="withdrawAmount" placeholder="Amount in $" min="10">
+<input type="text" id="method" placeholder="Payment Method">
+<input type="text" id="details" placeholder="Details (PayPal, etc.)">
+<button onclick="withdraw()">Request Withdrawal</button>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if(msg.type === 'task_completed'){
+        document.getElementById('balance').innerText = msg.balance.toFixed(2);
+        document.getElementById('gb').innerText = msg.gb_processed.toFixed(2);
+    }
+};
+
+async function dashboard(){
+    const res = await fetch('/api/user/dashboard?token='+token);
+    const data = await res.json();
+    document.getElementById('balance').innerText = data.balance.toFixed(2);
+    document.getElementById('gb').innerText = data.gb_processed.toFixed(2);
+}
+dashboard();
+
+async function getTask(){
+    const res = await fetch('/api/user/task?token='+token);
+    const data = await res.json();
+    if(data.id){
+        document.getElementById('task').innerHTML = `<div class="task-card">
+        <span>${data.title} - ${data.gb_size} GB</span>
+        <button onclick="completeTask(${data.id})">Complete</button>
+        </div>`;
+    }else{
+        alert(data.message);
+    }
+}
+
+async function completeTask(id){
+    const res = await fetch('/api/user/task/complete', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task_id:id})
+    });
+    const data = await res.json();
+    alert(data.message);
+    dashboard();
+}
+
+async function withdraw(){
+    const amount = parseFloat(document.getElementById('withdrawAmount').value);
+    const method = document.getElementById('method').value;
+    const details = document.getElementById('details').value;
+    const res = await fetch('/api/user/withdraw?token='+token, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount,method,details})
+    });
+    const data = await res.json();
+    alert(data.message);
+}
+</script>
+</body>
+  </html>
